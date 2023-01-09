@@ -1,0 +1,10 @@
+<launch>
+	<node pkg="rosbag" type="record" name="bag_record" 
+	args="record -o /home/rosmatch/bagfiles/new.bag  /amcl_pose  /move_base_node/RRTstarPlannerROS/plan" />
+	<!-- /move_base_node/SplinedRelaxedAStar/plan" /> -->
+	<!-- /move_base_node/RRTstarPlannerROS/plan" /> -->
+	<!-- /move_base_node/PRMPlannerROS/plan" /> -->
+	<!-- /move_base_node/VoronoiPlannerROS/voronoi_path" /> -->
+	                                                                                          
+</launch>
+
