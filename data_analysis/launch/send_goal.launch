@@ -1,7 +1,0 @@
-<launch>
-     <param name="position_x"   type = "double"    value="-8.1" />
-     <param name="position_y"   type = "double"    value="-8.1" />
-     <param name="position_yaw" type = "double"    value="3.14159" />
-     <node type="send_goal_node" name="send_goal_node" pkg="send_goal" output="screen" >
-     </node>
-</launch>

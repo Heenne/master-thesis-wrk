@@ -1,5 +1,0 @@
-<launch>
-	<node pkg="data_analysis" type="data_analysis_node" name="data_analysis_node" output="screen">
-	</node>                                                                                         
-</launch>
-
