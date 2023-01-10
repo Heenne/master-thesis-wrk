@@ -1,6 +1,12 @@
 # master-thesis-wrk
 ## 1. Introduction  
-this 
+This repository contains the code for performing the performance comparison experiment of four global path planning algorithms.  
+* `splined_relaxed_a_star`: ROS path planner plugin for splined relaxed A* algorithm, provided by Henrik Lurz.
+* `GVD_planner`: ROS path planner plugin for voronoi algorithm, provided by Boris Lau and Jian Wen.
+* `prm_global_planner`: ROS path planner plugin for PRM algorithm.
+* `rrt_star_global_planner`: ROS path planner plugin for RRT* algorithm.
+* `data_processing`: Code for obtaining and processing experimental data.
+
 ## 2. Usage
 This repository uses the `mir robot` as a simulation example.  
 Build the relevant repository through the following URL：
