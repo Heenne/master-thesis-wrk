@@ -9,11 +9,7 @@ Panels:
         - /TF1/Tree1
         - /Global Planner Info1
         - /Global Planner Info1/Potential Planner1/Autocompute Value Bounds1
-        - /Global Planner Info1/Full Plan1
-        - /Local Planner Info1
         - /Local Planner Info1/DWB Markers1/Namespaces1
-        - /MarkerArray1
-        - /MarkerArray2
       Splitter Ratio: 0.5690866708755493
     Tree Height: 904
   - Class: rviz/Selection
@@ -498,22 +494,6 @@ Visualization Manager:
       Topic: /particlecloud
       Unreliable: false
       Value: true
-    - Class: rviz/MarkerArray
-      Enabled: false
-      Marker Topic: /move_base_node/PRMPlannerROS/Sampling_nodes
-      Name: MarkerArray
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: false
-    - Class: rviz/MarkerArray
-      Enabled: false
-      Marker Topic: /move_base_node/PRMPlannerROS/neighbour_edges
-      Name: MarkerArray
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -541,7 +521,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 20.11787223815918
+      Distance: 35.45456314086914
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -557,9 +537,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6002026796340942
+      Pitch: 1.0052026510238647
       Target Frame: <Fixed Frame>
-      Yaw: 3.845421314239502
+      Yaw: 4.635425567626953
     Saved: ~
 Window Geometry:
   Displays:
