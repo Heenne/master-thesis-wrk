@@ -9,11 +9,7 @@ Panels:
         - /TF1/Tree1
         - /Global Planner Info1
         - /Global Planner Info1/Potential Planner1/Autocompute Value Bounds1
-        - /Global Planner Info1/Full Plan1
-        - /Local Planner Info1
         - /Local Planner Info1/DWB Markers1/Namespaces1
-        - /MarkerArray1
-        - /MarkerArray2
       Splitter Ratio: 0.5690866708755493
     Tree Height: 904
   - Class: rviz/Selection
@@ -498,22 +494,6 @@ Visualization Manager:
       Topic: /particlecloud
       Unreliable: false
       Value: true
-    - Class: rviz/MarkerArray
-      Enabled: false
-      Marker Topic: /move_base_node/PRMPlannerROS/Sampling_nodes
-      Name: MarkerArray
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: false
-    - Class: rviz/MarkerArray
-      Enabled: false
-      Marker Topic: /move_base_node/PRMPlannerROS/neighbour_edges
-      Name: MarkerArray
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
