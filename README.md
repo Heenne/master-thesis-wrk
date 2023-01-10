@@ -39,9 +39,15 @@ or use launch file `send_goal.launch` to set the goal point precisely:
 roslaunch data_analysis send_goal.launch
 ```
 ### 2.5 Data analysis
+If a data bag is recorded, use the corresponding command of the planner to generate a file named "plan" in .cvs format.
 ```
 rostopic echo -b new.bag -p /move_base_node/SplinedRelaxedAStar/plan > plan.csv
 rostopic echo -b new.bag -p /move_base_node/VoronoiPlannerROS/voronoi_path > plan.csv
 rostopic echo -b new.bag -p /move_base_node/PRMPlannerROS/plan > plan.csv
 rostopic echo -b new.bag -p /move_base_node/RRTstarPlannerROS/plan > plan.csv
 ```
+Then you can get length, smoothness and clearance of the planned path:
+```
+roslaunch data_analysis data_analysis.launch
+```
+The address of the file "plan" needs to be changed in this launch file to your own folder address.
