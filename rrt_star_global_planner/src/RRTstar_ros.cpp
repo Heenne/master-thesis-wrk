@@ -130,9 +130,9 @@ namespace RRTstar_planner
       // Check if the new node reach the goal point with the distance less than the GOAL_TOLERANCE
       if (goalReach(p_new.first, p_new.second, goal.pose.position.x , goal.pose.position.y))
       {
-        ROS_INFO("Time taken for sampling: %f ms", sampling_total.count()/1000.0);
-        ROS_INFO("Time taken for get new node: %f ms", getNew_total.count()/1000.0);
-        ROS_INFO("Time taken for optimization: %f ms", optimization_total.count()/1000.0);
+        ROS_INFO("Time cost of sampling: %f ms", sampling_total.count()/1000.0);
+        ROS_INFO("Time cost of finding new node: %f ms", getNew_total.count()/1000.0);
+        ROS_INFO("Time cost of optimization: %f ms", optimization_total.count()/1000.0);
 
         std::pair<float, float> point;
         
@@ -158,8 +158,9 @@ namespace RRTstar_planner
           auto plan_end = std::chrono::steady_clock::now();
           auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(plan_end - plan_start);
           ROS_INFO("RRT* Global Planner: Path found!!!!");
-          ROS_INFO("RRT* Global Planner: Path found in %d ms", duration.count());
+          ROS_INFO("Time cost of whole RRT* path planning: %d ms", duration.count());
           plan.push_back(start);
+
           // convert the points to poses
           ros::Time plan_time = ros::Time::now();
           for (int i = 0; i < path.size(); i++)
