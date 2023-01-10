@@ -24,18 +24,18 @@ under the code line:
 roslaunch data_analysis run_robot.launch
 ```
 In this launch file `run_robot.launch` you can change the map and start pose of the robot.  
-### 2.3 Record
+### 2.3 Data record
 ```
 rosbag record /move_base_node/PRMPlannerROS/plan -O new.bag
 rosbag record /move_base_node/RRTstarPlannerROS/plan -O new.bag
 rosbag record /move_base_node/VoronoiPlannerROS/plan -O new.bag
 ```
-### 2.4 set goal
+### 2.4 Set goal point
 or use launch file `send_goal.launch` to set the goal point precisely:
 ```
 roslaunch data_analysis send_goal.launch
 ```
-### 2.5 data analysis
+### 2.5 Data analysis
 ```
 rostopic echo -b new.bag -p /move_base_node/RRTstarPlannerROS/plan > plan.csv
 rostopic echo -b new.bag -p /move_base_node/PRMPlannerROS/plan > plan.csv
