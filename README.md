@@ -8,14 +8,14 @@ This repository contains the code for performing the performance comparison expe
 * `data_processing`: Code for obtaining and processing experimental data.
 
 ## 2. Usage
-This repository uses the `mir robot` as a simulation example.  
-Build the relevant repository through the following URL：
+This work uses the `mir robot` as a simulation example.  
+Please build the relevant repository through the following URL：
 ```
 https://github.com/match-ROS/match_mobile_robotics.git
 ```
 and build package `fpp_launch`, `fpp_msgs`, `fpp_ros` and `fp_utils` from the following repository:
 ```
-https://github.com/match-ROS/formation-path-planning
+https://github.com/match-ROS/formation-path-planning.
 ```
 ### 2.1 Add path planner plugin
 Browse into `your_catkin_ws/src/match_mobile_robotics/mir/mir_navigation/launch` and open the file `move_base.launch`.  
