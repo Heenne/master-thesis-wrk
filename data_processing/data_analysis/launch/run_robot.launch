@@ -1,0 +1,22 @@
+<launch>
+	<!-- Basic launch file which you can change the map for single robot-->
+	<include file="$(find match_gazebo)/launch/match_world_common.launch">
+	    <arg name="world_name" value="maze" />
+		<!-- <arg name="world_name" value="big_square" /> -->
+	</include>
+
+    <!-- You can change the initial position of the robot-->
+	<include file="$(find mir_launch_sim)/launch/mir_100.launch">
+		<arg name="robot_x"     value="8.1" />
+		<arg name="robot_y"     value="8.1" />
+		<arg name="robot_yaw"   value="3.14159" />
+		<!-- <arg name="global_planner" value="SplinedRelaxedAStar" />  -->
+	</include>
+
+    <!--2D Navigation-->
+	<node type="rviz" name="rviz" pkg="rviz" args="-d $(find data_analysis)/rviz/voronoi_config.rviz" />
+	<!-- args="-d $(find rrt_star_global_planner)/config/rrt_star_config.rviz -->
+	<!-- args="-d $(find prm_global_planner)/config/prm_config.rviz -->
+	<!-- args="-d $(find splined_relaxed_a_star)/config/splined_relaxed_a_star_config.rviz -->
+	<!-- args="-d $(find voronoi_planner)/config/voronoi_config.rviz -->
+</launch>
