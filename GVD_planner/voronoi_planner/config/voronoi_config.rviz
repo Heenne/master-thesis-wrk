@@ -7,7 +7,6 @@ Panels:
         - /Grid1/Offset1
         - /TF1/Frames1
         - /TF1/Tree1
-        - /Global Planner Info1
         - /Global Planner Info1/Costmap1
         - /Global Planner Info1/Potential Planner1/Autocompute Value Bounds1
         - /Global Planner Info1/Full Plan1
@@ -294,7 +293,7 @@ Visualization Manager:
           Draw Behind: true
           Enabled: true
           Name: Costmap
-          Topic: /move_base_node/global_costmap/voronoi_layer/voronoi_grid
+          Topic: /move_base_node/global_costmap/inflation/voronoi_grid
           Unreliable: false
           Use Timestamp: false
           Value: true
@@ -401,12 +400,12 @@ Visualization Manager:
           Class: rviz/Map
           Color Scheme: costmap
           Draw Behind: false
-          Enabled: true
+          Enabled: false
           Name: Costmap
           Topic: move_base_node/local_costmap/costmap
           Unreliable: false
           Use Timestamp: false
-          Value: true
+          Value: false
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
@@ -524,7 +523,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 31.257213592529297
+      Distance: 58.218528747558594
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -532,17 +531,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -12.041664123535156
-        Y: -17.95398712158203
-        Z: -2.384185791015625e-07
+        X: 12.235149383544922
+        Y: -11.391651153564453
+        Z: -7.867813110351562e-06
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6002026796340942
+      Pitch: 1.5497963428497314
       Target Frame: <Fixed Frame>
-      Yaw: 3.845421314239502
+      Yaw: 4.615411758422852
     Saved: ~
 Window Geometry:
   Displays:
