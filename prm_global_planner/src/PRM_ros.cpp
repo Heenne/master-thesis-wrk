@@ -33,18 +33,17 @@ namespace PRM_planner
   
       originX = costmap_->getOriginX();
       originY = costmap_->getOriginY();
-      std::cout << "originX: " << originX << std::endl;
-      std::cout << "originY: " << originY << std::endl;
 	    width = costmap_->getSizeInCellsX();
 	    height = costmap_->getSizeInCellsY();
-      std::cout << "width: " << width << std::endl;
-      std::cout << "height: " << height << std::endl;
 	    resolution = costmap_->getResolution();
       frame_id_ = costmap_ros->getGlobalFrameID();
 
       NUM_SAMPLES = 2000; 
       MAX_DISTANCE = 10; 
       NUM_EDGES = 10; 
+      std::cout << "total number of sampling points: " << NUM_SAMPLES << std::endl;
+      std::cout << "max distance of connected edge: " << MAX_DISTANCE << std::endl;
+      std::cout << "max number of connected edge: " << NUM_EDGES << std::endl;
 
       ROS_INFO("PRM planner initialized successfully");
       initialized_ = true;
@@ -59,11 +58,11 @@ namespace PRM_planner
                 const geometry_msgs::PoseStamped& goal,
                 std::vector<geometry_msgs::PoseStamped>& plan)
   {
-    // record the start time of path planning
-    double startTime = ros::Time::now().toSec();
-    std::cout << "total number of sampling points: " << NUM_SAMPLES << std::endl;
-    std::cout << "max_distance: " << MAX_DISTANCE << std::endl;
-    std::cout << "max number of connected edge: " << NUM_EDGES << std::endl;
+    // record time cost of PRM path planning
+    std::chrono::microseconds learning{0};
+    std::chrono::microseconds query{0};
+    std::chrono::microseconds planning{0};
+    auto planning_start = std::chrono::steady_clock::now();
     
     // Check if the planner is initialized
     if (!initialized_)
@@ -86,10 +85,9 @@ namespace PRM_planner
     start_node.h= 0.0;
     start_node.f = 0.0;
     nodes.push_back(start_node);
-    std::cout << "Start node: " << start_node.x << ", " << start_node.y << std::endl;
 
     // Generate the sampling nodes in free space
-    auto sampling_start = std::chrono::steady_clock::now();
+    auto learning_start = std::chrono::steady_clock::now();
     std::pair<float, float> rand_p; 
     for (int i = 0; i < NUM_SAMPLES; i++)
     {
@@ -100,8 +98,6 @@ namespace PRM_planner
       new_node.node_id = i+1;  // id of sampling points start from 1
       nodes.push_back(new_node);
     }
-    auto sampling_end = std::chrono::steady_clock::now();
-    std::cout << "Sampling time: " << std::chrono::duration_cast<std::chrono::milliseconds>(sampling_end - sampling_start).count() << " ms" << std::endl;
 
     // Add goal point into the nodes vector
     Node goal_node;
@@ -109,8 +105,6 @@ namespace PRM_planner
     goal_node.y = goal.pose.position.y;
     goal_node.node_id = NUM_SAMPLES + 1;
     nodes.push_back(goal_node);
-    std::cout << "Goal node: " << goal_node.x << ", " << goal_node.y << std::endl;
-    std::cout << "Number of sampling points: " << nodes.size() << std::endl;
 
     // Find neighbours (available edges) for each node
     auto findNeighbour_start = std::chrono::steady_clock::now();
@@ -147,39 +141,25 @@ namespace PRM_planner
       }
       neighbours_list.push_back(neighbours);
     }
-    auto findNeighbour_end = std::chrono::steady_clock::now();
-    std::cout << "Find neighbours time: " << std::chrono::duration_cast<std::chrono::milliseconds>(findNeighbour_end - findNeighbour_start).count() << " ms" << std::endl;
 
-    // show edges coordinates
-    for (int i = 0; i < neighbours_list.size(); i++)
-    {
-      std::cout << "Neighbours of node " << i << ": ";
-      for (int j = 0; j < neighbours_list[i].size(); j++)
-      {
-        std::cout << neighbours_list[i][j] << " ";
-      }
-      std::cout << std::endl;
-    }
+    auto learning_end = std::chrono::steady_clock::now();
+    learning = std::chrono::duration_cast<std::chrono::microseconds>(learning_end - learning_start);
+    ROS_INFO("Time cost of learning phase: %f ms", learning.count()/1000.0);
     
     // Find the path using A* algorithm
+    auto query_start = std::chrono::steady_clock::now();
     std::vector<std::pair<float, float>> path;
     if (findPath(nodes, neighbours_list, start_node, goal_node))
     {
-      for (int i = 0; i < nodes.size(); i++)
-      {
-        std::cout << "parent of node " << i <<" is node: " << nodes[i].parent_id << std::endl;
-      }
       getPath(path, nodes, start_node, goal_node);
-      std::cout << "Path size: " << path.size() << std::endl;
-        for (int j = 0; j < path.size(); j++)
-      {
-        std::cout << "path node x: " << path[j].first << " and y:" << path[j].second << std::endl;
-      }
     }
     else
     {
       ROS_WARN("Failed to find a path using PRM!");
     }
+    auto query_end = std::chrono::steady_clock::now();
+    query = std::chrono::duration_cast<std::chrono::microseconds>(query_end - query_start);
+    ROS_INFO("Time cost of query phase: %f ms", query.count()/1000.0);
 
     //create plan message
     plan.clear();
@@ -187,11 +167,12 @@ namespace PRM_planner
     if (path.size() > 0)
     {
       // show planning time
-      double endTime = ros::Time::now().toSec();
-      ROS_INFO("PRM path planning time: %f", endTime - startTime);
-      ros::Time plan_time = ros::Time::now();
+      auto planning_end = std::chrono::steady_clock::now();
+      planning = std::chrono::duration_cast<std::chrono::microseconds>(planning_end - planning_start);
+      ROS_INFO("Time cost of whole PRM path planning: %f ms", planning.count()/1000.0);
 
       // convert the point coordinate to pose
+      ros::Time plan_time = ros::Time::now();
       for (int i = 1; i < path.size() -1; i++)
       {
         geometry_msgs::PoseStamped pose;
@@ -290,8 +271,6 @@ namespace PRM_planner
 
   bool PRMPlannerROS::findPath(std::vector<Node>& nodes, std::vector<std::vector<int>>& neighbours_list, Node& start_point, Node& goal_point)
   {
-    std::cout << "start node id: " << start_point.node_id << std::endl;
-    std::cout << "end node id:  " << goal_point.node_id << std::endl;
     std::priority_queue<Node,std::vector<Node>, cmp> openList;
 	  std::priority_queue<Node,std::vector<Node>, cmp> closeList;
     openList.push(start_point);
