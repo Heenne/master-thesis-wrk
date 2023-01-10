@@ -31,8 +31,9 @@ rosbag record /move_base_node/RRTstarPlannerROS/plan -O new.bag
 rosbag record /move_base_node/VoronoiPlannerROS/plan -O new.bag
 ```
 ### 2.4 set goal
+or use launch file `send_goal.launch` to set the goal point precisely:
 ```
-roslaunch data_analysis run_robot.launch
+roslaunch data_analysis send_goal.launch
 ```
 ### 2.5 data analysis
 ```
