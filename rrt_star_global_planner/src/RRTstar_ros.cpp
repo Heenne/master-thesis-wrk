@@ -32,14 +32,17 @@ namespace RRTstar_planner
   
       ros::NodeHandle private_nh("~/" + name);
       plan_pub_ = private_nh.advertise<nav_msgs::Path>("plan", 1);
+
+      this->point_pub_ = private_nh.advertise<visualization_msgs::MarkerArray>("marker", 1000);
+
   
       originX = costmap_->getOriginX();
       originY = costmap_->getOriginY();
 	    resolution = costmap_->getResolution();
-      map_width = costmap_->getSizeInMetersX();
-      map_height = costmap_->getSizeInMetersY();
+      map_width_ = costmap_->getSizeInMetersX();
+      map_height_ = costmap_->getSizeInMetersY();
 
-      PROBABILITY_THRESHOLD = 0.5;
+      PROBABILITY_THRESHOLD = 0.9;
       RADIUS = 1.0;
       GOAL_TOLERANCE = 0.2;
       epsilon_min = 0.1;
@@ -89,22 +92,26 @@ namespace RRTstar_planner
     Node node_nearest;
     while (nodes.size() < MAX_NUM_NODES)
     {
+      // ROS_INFO_STREAM("1");
       bool found_next = false;
       while (found_next == false)
       {
+        // ROS_INFO_STREAM("2");
         auto sampling_start = std::chrono::steady_clock::now();
         p_rand = sampleFree(goal.pose.position.x, goal.pose.position.y); // get a random point in the free space
+        // ROS_INFO_STREAM("2.1");
         auto sampling_end = std::chrono::steady_clock::now();
         sampling_total += std::chrono::duration_cast<std::chrono::microseconds>(sampling_end - sampling_start);
-
         auto getNew_start = std::chrono::steady_clock::now();
         node_nearest = getNearest(nodes, p_rand); // The nearest node of the random point
+        // ROS_INFO_STREAM("2.2");
         p_new = steer(node_nearest.x, node_nearest.y, p_rand.first, p_rand.second); // new point and node candidate
         auto getNew_end = std::chrono::steady_clock::now();
         getNew_total += std::chrono::duration_cast<std::chrono::microseconds>(getNew_end - getNew_start);
-
+        // ROS_INFO_STREAM("2.3");
         if (!isPointCollision(p_new.first, p_new.second))
         {
+          // ROS_INFO_STREAM("3");
           Node newnode;
           newnode.x = p_new.first;
           newnode.y = p_new.second;
@@ -124,6 +131,39 @@ namespace RRTstar_planner
 
           found_next = true;
         }
+
+        // int counter = 0;
+        // visualization_msgs::MarkerArray marker_array = visualization_msgs::MarkerArray();
+        // for(auto nodes : nodes)
+        // {
+        //   visualization_msgs::Marker start_position;
+        //   start_position.id = counter;
+        //   start_position.header.frame_id="map";
+        //   start_position.header.stamp = ros::Time::now();
+        //   start_position.type = visualization_msgs::Marker::CUBE;
+        //   start_position.lifetime = ros::Duration(0);
+        //   start_position.pose.position.x = nodes.x;
+        //   start_position.pose.position.y = nodes.y;
+        //   start_position.pose.position.z = 0.0;
+        //   start_position.pose.orientation.x = 0.0;
+        //   start_position.pose.orientation.y = 0.0;
+        //   start_position.pose.orientation.z = 0.0;
+        //   start_position.pose.orientation.w = 1.0;
+        //   start_position.color.r = 1.0;
+        //   start_position.color.a = 1.0;
+        //   start_position.scale.x = 1.0;
+        //   start_position.scale.y = 1.0;
+        //   start_position.scale.z = 1.0;
+
+        //   marker_array.markers.push_back(start_position);
+        //   counter++;
+        // }
+        // point_pub_.publish(marker_array);
+
+
+        // ROS_INFO_STREAM(nodes.size());
+
+        
 
       }
 
@@ -220,12 +260,15 @@ namespace RRTstar_planner
     {
       for (int i = 0; i < 10000; i++)
       {
-        float map_width = 15.0;
-        float map_height = 15.0;
+        float map_width = this->map_width_;
+        float map_height = this->map_height_;
+
         std::uniform_real_distribution<> x(-map_width, map_width);
         std::uniform_real_distribution<> y(-map_height, map_height);
+
         random_point.first = x(gen);
         random_point.second = y(gen);
+
         if (!isPointCollision(random_point.first, random_point.second))
         {
           return random_point;
@@ -253,16 +296,20 @@ namespace RRTstar_planner
   bool RRTstarPlannerROS::isPointCollision(float wx, float wy)
   {
     unsigned int mx, my;
-    this->costmap_->worldToMap(wx, wy, mx, my);
-    unsigned int cell_cost = static_cast<unsigned int>(this->costmap_->getCost(mx, my));
-    if (cell_cost > 0)
+
+    if(this->costmap_->worldToMap(wx, wy, mx, my))
     {
-      return true;
+      unsigned int cell_cost = static_cast<unsigned int>(this->costmap_->getCost(mx, my));
+      if (cell_cost > 0)
+      {
+        return true;
+      }
+      else
+      {
+        return false;
+      }
     }
-    else
-    {
-      return false;
-    }
+    return true;
   }
   
   Node RRTstarPlannerROS::getNearest(std::vector<Node> nodes, std::pair<float, float> p_rand)

@@ -26,6 +26,8 @@
 #include <boost/random.hpp>
 #include <random>
 
+#include <visualization_msgs/MarkerArray.h>
+
 using std::string;
 
 
@@ -207,8 +209,11 @@ namespace RRTstar_planner
       float resolution;
       bool initialized_;
       std::string frame_id_;
-      float map_width;
-      float map_height;
+      float map_width_;
+      float map_height_;
+
+      ros::Publisher point_pub_;
+
   };
 }; // RRTstar_planner namespace
 #endif

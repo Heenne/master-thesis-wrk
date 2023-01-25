@@ -327,6 +327,9 @@ private:
     ros::NodeHandle nh_;
     ros::NodeHandle planner_nh_;
 
+    ros::Publisher point_pub_;
+
+
     //! Global frame of the robot
     std::string global_frame_;
     //! tf_prefix that was defined in the launch files for the robot

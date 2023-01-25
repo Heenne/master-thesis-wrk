@@ -42,6 +42,8 @@ void SplinedRelaxedAStar::initialize(std::string name, costmap_2d::Costmap2DROS*
         this->plan_publisher_ = private_nh.advertise<nav_msgs::Path>("plan", 1);
         this->planning_points_orientation_publisher_ =
             private_nh.advertise<geometry_msgs::PoseArray>("planning_points_orientation", 1);
+        this->point_pub_ = this->nh_.advertise<visualization_msgs::MarkerArray>("marker", 1000);
+
 
         this->initVisuHelper(name);
 
@@ -199,12 +201,111 @@ uint32_t SplinedRelaxedAStar::makePlan(const geometry_msgs::PoseStamped& start, 
     int array_goal_straight_end_cell =
         this->getArrayIndexByCostmapCell(goal_straight_end_cell_x, goal_straight_end_cell_y);
 
+    visualization_msgs::MarkerArray marker_array;
+    int counter = 0;
+    visualization_msgs::Marker start_position;
+    start_position.id = counter;
+    start_position.header.frame_id="map";
+    start_position.header.stamp = ros::Time::now();
+    start_position.type = visualization_msgs::Marker::CUBE;
+    start_position.lifetime = ros::Duration(0);
+    start_position.pose.position.x = world_start.getX();
+    start_position.pose.position.y = world_start.getY();
+    start_position.pose.position.z = 0.0;
+    start_position.pose.orientation.x = 0.0;
+    start_position.pose.orientation.y = 0.0;
+    start_position.pose.orientation.z = 0.0;
+    start_position.pose.orientation.w = 1.0;
+    start_position.color.r = 1.0;
+    start_position.color.a = 1.0;
+    start_position.scale.x = 1.0;
+    start_position.scale.y = 1.0;
+    start_position.scale.z = 1.0;
+
+    marker_array.markers.push_back(start_position);
+
+    counter++;
+    start_position.id = counter;
+    start_position.header.frame_id="map";
+    start_position.header.stamp = ros::Time::now();
+    start_position.type = visualization_msgs::Marker::CUBE;
+    start_position.lifetime = ros::Duration(0);
+    start_position.pose.position.x = start_straight_end.getX();
+    start_position.pose.position.y = start_straight_end.getY();
+    start_position.pose.position.z = 0.0;
+    start_position.pose.orientation.x = 0.0;
+    start_position.pose.orientation.y = 0.0;
+    start_position.pose.orientation.z = 0.0;
+    start_position.pose.orientation.w = 1.0;
+    start_position.color.r = 1.0;
+    start_position.color.a = 1.0;
+    start_position.scale.x = 1.0;
+    start_position.scale.y = 1.0;
+    start_position.scale.z = 1.0;
+    marker_array.markers.push_back(start_position);
+
+    counter++;
+    start_position.id = counter;
+    start_position.header.frame_id="map";
+    start_position.header.stamp = ros::Time::now();
+    start_position.type = visualization_msgs::Marker::CUBE;
+    start_position.lifetime = ros::Duration(0);
+    start_position.pose.position.x = world_goal.getX();
+    start_position.pose.position.y = world_goal.getY();
+    start_position.pose.position.z = 0.0;
+    start_position.pose.orientation.x = 0.0;
+    start_position.pose.orientation.y = 0.0;
+    start_position.pose.orientation.z = 0.0;
+    start_position.pose.orientation.w = 1.0;
+    start_position.color.r = 1.0;
+    start_position.color.a = 1.0;
+    start_position.scale.x = 1.0;
+    start_position.scale.y = 1.0;
+    start_position.scale.z = 1.0;
+    marker_array.markers.push_back(start_position);
+
+    counter++;
+    start_position.id = counter;
+    start_position.header.frame_id="map";
+    start_position.header.stamp = ros::Time::now();
+    start_position.type = visualization_msgs::Marker::CUBE;
+    start_position.lifetime = ros::Duration(0);
+    start_position.pose.position.x = goal_straight_end.getX();
+    start_position.pose.position.y = goal_straight_end.getY();
+    start_position.pose.position.z = 0.0;
+    start_position.pose.orientation.x = 0.0;
+    start_position.pose.orientation.y = 0.0;
+    start_position.pose.orientation.z = 0.0;
+    start_position.pose.orientation.w = 1.0;
+    start_position.color.r = 1.0;
+    start_position.color.a = 1.0;
+    start_position.scale.x = 1.0;
+    start_position.scale.y = 1.0;
+    start_position.scale.z = 1.0;
+    marker_array.markers.push_back(start_position);
+
+    this->point_pub_.publish(marker_array);
+
+    ros::spinOnce();
+    ros::spinOnce();
+    ros::spinOnce();
+    ros::spinOnce();
+    ros::spinOnce();
+    ros::spinOnce();
+    ros::spinOnce();
+    ros::spinOnce();
+
+
     ROS_INFO("Creation of g score array done");
     // Find plan for the start straight line
     this->findPlan(array_start_cell, array_start_straight_end_cell, g_score);
-
+    ROS_INFO("FindPlan1 Done");
     // Start planning the middle part
     this->findPlan(array_start_straight_end_cell, array_goal_straight_end_cell, g_score);
+    ROS_INFO("FindPlan2 Done");
+
+    ROS_INFO_STREAM("World goal: "<< world_goal.getX() << " | " << world_goal.getY());
+    ROS_INFO_STREAM("Goal Straight End: "<< goal_straight_end.getX() << " | " << goal_straight_end.getY());
 
     // Find Plan for the end straight line
     this->findPlan(array_goal_straight_end_cell, array_goal_cell, g_score);
@@ -215,6 +316,7 @@ uint32_t SplinedRelaxedAStar::makePlan(const geometry_msgs::PoseStamped& start, 
         std::vector<int> array_plan;
         array_plan = this->createPlan(array_start_cell, array_goal_cell, g_score);
         this->createPoseArrayForPlan(array_plan, plan_astar);
+        // plan = plan_astar;
 
         ROS_INFO("Created Plan");
         // Select pose every so often
@@ -348,7 +450,7 @@ uint32_t SplinedRelaxedAStar::makePlan(const geometry_msgs::PoseStamped& start, 
                 spline_list[spline_counter]->calcControlPoints();
 
                 // Loop was not able to optimize the spline after x iterations. Maybe make parameter for this?
-                if (timeout_counter >= 100)
+                if (timeout_counter >= 20)
                 {
                     ROS_ERROR_STREAM(
                         "SplinedRelaxedAStar: Timeout while optimizing spline, number: " << spline_counter);
@@ -414,7 +516,6 @@ uint32_t SplinedRelaxedAStar::makePlan(const geometry_msgs::PoseStamped& start, 
 
                 last_iterator = lower_bound;
             } while (spline_not_ended);
-            ROS_INFO("Ended while loop");
         }
         // Add the target point to the spline as it will most likely not be added
         points_of_plan.push_back(spline_list.back()->calcPointOnBezierSpline(1.0));
@@ -484,10 +585,10 @@ void SplinedRelaxedAStar::findPlan(int array_start_cell, int array_goal_cell, st
 
     while (!array_open_cell_list.empty() && g_score[array_goal_cell] == std::numeric_limits<float>::infinity())
     {
-        // ROS_INFO("Open_Cell_Count: %i", array_open_cell_list.size());
+        ROS_INFO_STREAM_THROTTLE(0.1,"Open_Cell_Count: " << array_open_cell_list.size());
         int array_current_cell = array_open_cell_list.begin()->cell_index;  // Get cell with lowest f_score
         // ROS_INFO("cell0: %f, cell1: %f, last: %f", array_open_cell_list.begin()->f_cost,
-        // std::next(array_open_cell_list.begin())->f_cost, std::prev(array_open_cell_list.end())->f_cost);
+                //  std::next(array_open_cell_list.begin())->f_cost, std::prev(array_open_cell_list.end())->f_cost);
         array_open_cell_list.erase(array_open_cell_list.begin());  // Remove cell from open_cell_set so it will not be
                                                                    // visited again
 

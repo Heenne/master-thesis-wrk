@@ -38,7 +38,7 @@ namespace PRM_planner
 	    resolution = costmap_->getResolution();
       frame_id_ = costmap_ros->getGlobalFrameID();
 
-      NUM_SAMPLES = 2000; 
+      NUM_SAMPLES = 3000; 
       MAX_DISTANCE = 10; 
       NUM_EDGES = 10; 
       std::cout << "total number of sampling points: " << NUM_SAMPLES << std::endl;
@@ -49,6 +49,7 @@ namespace PRM_planner
       initialized_ = true;
 
       plan_pub_ = private_nh.advertise<nav_msgs::Path>("plan", 1);
+      point_pub_ = private_nh.advertise<visualization_msgs::MarkerArray>("prm_marker", 1000);
     }
     else
       ROS_WARN("This PRM planner has already been initialized... doing nothing");
@@ -98,6 +99,37 @@ namespace PRM_planner
       new_node.node_id = i+1;  // id of sampling points start from 1
       nodes.push_back(new_node);
     }
+
+    ROS_ERROR_STREAM(nodes.size());
+    
+    visualization_msgs::MarkerArray target_position_list;
+		int counter = 0;
+		for(auto node : nodes)
+		{
+			visualization_msgs::Marker start_position;
+			start_position.id = counter;
+			start_position.header.frame_id="map";
+			start_position.header.stamp = ros::Time::now();
+			start_position.type = visualization_msgs::Marker::CUBE;
+			start_position.lifetime = ros::Duration(0);
+			start_position.pose.position.x = node.x;
+			start_position.pose.position.y = node.y;
+			start_position.pose.position.z = 0.0;
+			start_position.pose.orientation.x = 0.0;
+			start_position.pose.orientation.y = 0.0;
+			start_position.pose.orientation.z = 0.0;
+			start_position.pose.orientation.w = 1.0;
+			start_position.color.r = 1.0;
+			start_position.color.a = 1.0;
+			start_position.scale.x = 1.0;
+			start_position.scale.y = 1.0;
+			start_position.scale.z = 1.0;
+
+			target_position_list.markers.push_back(start_position);
+			counter++;
+		}
+		this->point_pub_.publish(target_position_list);
+
 
     // Add goal point into the nodes vector
     Node goal_node;
@@ -202,19 +234,19 @@ namespace PRM_planner
   std::pair<float, float> PRMPlannerROS::sampleFree()
   {
     std::pair<float, float> random_point;
-    // float map_width = costmap_->getSizeInMetersX();
-    // float map_height = costmap_->getSizeInMetersY();
-    float map_width = 15.0;
-    float map_height = 15.0;
+    float map_width = costmap_->getSizeInMetersX();
+    float map_height = costmap_->getSizeInMetersY();
+    // float map_width = 30.0;
+    // float map_height = 30.0;
     bool findNode = false;
     while(!findNode)
     {
       std::random_device rd;
       std::mt19937 gen(rd());
-      // std::uniform_real_distribution<> dis_x(originX, originX + map_width);
-      // std::uniform_real_distribution<> dis_y(originY, originY + map_height);
-      std::uniform_real_distribution<> dis_x(0.0-map_width, map_width);
-      std::uniform_real_distribution<> dis_y(0.0-map_height, map_height);
+      std::uniform_real_distribution<> dis_x(originX, originX + map_width);
+      std::uniform_real_distribution<> dis_y(originY, originY + map_height);
+      // std::uniform_real_distribution<> dis_x(0.0-map_width, map_width);
+      // std::uniform_real_distribution<> dis_y(0.0-map_height, map_height);
       random_point.first = dis_x(gen);
       random_point.second = dis_y(gen);
       if (!isPointCollision(random_point.first, random_point.second))
@@ -230,7 +262,7 @@ namespace PRM_planner
     unsigned int mx, my;
     this->costmap_->worldToMap(wx, wy, mx, my);
     unsigned int cell_cost = static_cast<unsigned int>(this->costmap_->getCost(mx, my));
-    if (cell_cost > 0)
+    if (cell_cost > 0 && cell_cost != -1)
     {
       return true;
     }

@@ -28,6 +28,9 @@
 #include <boost/random.hpp>
 #include <random>
 
+#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/Marker.h>
+
 using std::string;
 
 
@@ -172,6 +175,7 @@ namespace PRM_planner
       int NUM_EDGES; // max number of edges that a node can have 
       
       ros::Publisher plan_pub_;
+      ros::Publisher point_pub_;
     protected:
 
       /**
