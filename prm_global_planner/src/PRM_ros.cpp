@@ -38,7 +38,7 @@ namespace PRM_planner
 	    resolution = costmap_->getResolution();
       frame_id_ = costmap_ros->getGlobalFrameID();
 
-      NUM_SAMPLES = 3000; 
+      NUM_SAMPLES = 5000; 
       MAX_DISTANCE = 10; 
       NUM_EDGES = 10; 
       std::cout << "total number of sampling points: " << NUM_SAMPLES << std::endl;
@@ -76,7 +76,6 @@ namespace PRM_planner
     std::vector<Node> nodes;
     nodes.reserve(NUM_SAMPLES + 2); 
     std::string global_frame = frame_id_;
-
     // Add start point into the nodes vector
     Node start_node;
     start_node.x = start.pose.position.x;
@@ -86,7 +85,6 @@ namespace PRM_planner
     start_node.h= 0.0;
     start_node.f = 0.0;
     nodes.push_back(start_node);
-
     // Generate the sampling nodes in free space
     auto learning_start = std::chrono::steady_clock::now();
     std::pair<float, float> rand_p; 
@@ -99,8 +97,6 @@ namespace PRM_planner
       new_node.node_id = i+1;  // id of sampling points start from 1
       nodes.push_back(new_node);
     }
-
-    ROS_ERROR_STREAM(nodes.size());
     
     visualization_msgs::MarkerArray target_position_list;
 		int counter = 0;
@@ -130,20 +126,17 @@ namespace PRM_planner
 		}
 		this->point_pub_.publish(target_position_list);
 
-
     // Add goal point into the nodes vector
     Node goal_node;
     goal_node.x = goal.pose.position.x;
     goal_node.y = goal.pose.position.y;
     goal_node.node_id = NUM_SAMPLES + 1;
     nodes.push_back(goal_node);
-
     // Find neighbours (available edges) for each node
     auto findNeighbour_start = std::chrono::steady_clock::now();
 
     std::vector< std::vector<int> > neighbours_list; //it stores neighbours'id for each node
     neighbours_list.reserve(NUM_SAMPLES + 2);
-
     for (int i = 0; i < nodes.size(); i++)
     {
       std::priority_queue<std::pair<int, float>, std::vector< std::pair<int,float> >, cmp1> node_pair_list;
@@ -193,41 +186,142 @@ namespace PRM_planner
     query = std::chrono::duration_cast<std::chrono::microseconds>(query_end - query_start);
     ROS_INFO("Time cost of query phase: %f ms", query.count()/1000.0);
 
-    //create plan message
-    plan.clear();
-    plan.push_back(start);
-    if (path.size() > 0)
+    if(path.size() > 1)
     {
-      // show planning time
-      auto planning_end = std::chrono::steady_clock::now();
-      planning = std::chrono::duration_cast<std::chrono::microseconds>(planning_end - planning_start);
-      ROS_INFO("Time cost of whole PRM path planning: %f ms", planning.count()/1000.0);
 
-      // convert the point coordinate to pose
-      ros::Time plan_time = ros::Time::now();
-      for (int i = 1; i < path.size() -1; i++)
+      // build spline from waypoints and optimize to fulfil curvature limit
+      int costmap_size_x = this->costmap_->getSizeInCellsX();
+      int costmap_size_y = this->costmap_->getSizeInCellsY();
+      cv::Mat costmap_img_orig = cv::Mat::zeros(costmap_size_x, costmap_size_y, CV_8UC1);
+      int obstacle_count = 0;
+      for (int i = 0; i < costmap_size_x; i++)
       {
-        geometry_msgs::PoseStamped pose;
-        pose.header.stamp = plan_time;
-        pose.header.frame_id = frame_id_;
-        pose.pose.position.x = path[i].first;
-        pose.pose.position.y = path[i].second;
-        pose.pose.position.z = 0.0;
-        pose.pose.orientation.x = 0.0;
-        pose.pose.orientation.y = 0.0;
-        pose.pose.orientation.z = 0.0;
-        pose.pose.orientation.w = 1.0;
+          for (int j = 0; j < costmap_size_y; j++)
+          {
+              double cell_cost = static_cast<double>(this->costmap_->getCost(i, j));
+              if (cell_cost > 0 || cell_cost == -1)
+              {
+                  costmap_img_orig.at<uchar>(i, j, 0) = 255;
+                  obstacle_count++;
+              }
+          }
+      }
+      
+      // get costmap as image
+      cv::Mat costmap_img;
+      cv::threshold(~costmap_img_orig, costmap_img, 1 / 0.05 / 10.0, 255, cv::THRESH_BINARY_INV);
+      costmap_img.convertTo(costmap_img, CV_8UC1);
+
+      cv::Mat obstacle_img = costmap_img;
+
+      std::vector<cv::Point2d> sparse_path_world;
+      for(auto point: path)
+      {
+        cv::Point2d new_point;
+        new_point.x = point.first;
+        new_point.y = point.second;
+        sparse_path_world.push_back(new_point);
+      }
+
+      std::vector<cv::Point2d> continuous_path;
+      std::vector<cv::Point2d> optimized_sparse_path;
+      std::vector<double> optimized_lengths;
+      costmap_2d::Costmap2D costmap_copy = *(this->costmap_);
+      bool splining_success = path_smoothing::buildOptimizedContinuousPath(sparse_path_world,
+                                                                          continuous_path,
+                                                                          optimized_sparse_path,
+                                                                          optimized_lengths,
+                                                                          costmap_copy,
+                                                                          obstacle_img,
+                                                                          100.0,
+                                                                          50,
+                                                                          true,
+                                                                          5.0);
+      ROS_INFO_STREAM("Optimization Status: " << splining_success);
+      // ROS_INFO_STREAM(continuous_path.size());
+      // std_msgs::Float64MultiArray optimized_lengths_msg;
+      // optimized_lengths_msg.data = optimized_lengths;
+      // optimized_lengths_pub_.publish(optimized_lengths_msg);
+
+      // // create plan from optimized sparse path for visualization
+      // // std::vector<geometry_msgs::PoseStamped> optimized_sparse_plan;
+      // // path_planning::createPlanFromPath(optimized_sparse_path, optimized_sparse_plan, this->frame_id_);
+      // // this->optimized_sparse_path_ = optimized_sparse_plan;
+      // // this->spline_tangent_lengths_ = optimized_lengths;
+      // // this->publishPlan(optimized_sparse_plan, this->optimized_plan_pub_);
+
+      if (!splining_success)
+      {
+          return false;
+      }
+
+      std::vector<geometry_msgs::PoseStamped> splined_plan;
+      path_planning::createPlanFromPath(continuous_path, splined_plan, this->frame_id_);
+      // // std::chrono::steady_clock::time_point splining_time = std::chrono::steady_clock::now();
+      // // double splining_duration = (std::chrono::duration_cast<std::chrono::milliseconds>(splining_time - plan_creating_time).count()) / 1000.0;
+      // // ROS_INFO_STREAM("SplinedVoronoiPlanner: Time taken for building splined plan (s): " << splining_duration);
+
+      // if (!path_planning::isPlanFree(std::shared_ptr<costmap_2d::Costmap2D>(this->costmap_), 1, splined_plan))
+      // {
+      //     ROS_ERROR("Plan is not free!");
+      //     return false;
+      // }
+      // // std::chrono::steady_clock::time_point free_check_time = std::chrono::steady_clock::now();
+      // // ROS_INFO_STREAM(
+      // //     "SplinedVoronoiPlanner: Time taken for checking if final plan is free (s): "
+      // //     << (std::chrono::duration_cast<std::chrono::microseconds>(free_check_time - splining_time).count()) /
+      // //            1000000.0);
+      
+      // // fill resulting plan
+      for (auto pose : splined_plan)
+      {
         plan.push_back(pose);
       }
-      plan.push_back(goal);
-      publishPlan(plan);
-      return true;
+      if (plan.empty())
+      {
+          ROS_ERROR("Got empty plan from spline interpolation");
+          return false;
+      }
     }
-    else
-    {
-      ROS_WARN("Failed to find a path! There is no path elements!");
-      return false;
-    }
+
+    publishPlan(plan);
+    return true;
+
+    //create plan message
+  //   plan.clear();
+  //   plan.push_back(start);
+  //   if (path.size() > 0)
+  //   {
+  //     // show planning time
+  //     auto planning_end = std::chrono::steady_clock::now();
+  //     planning = std::chrono::duration_cast<std::chrono::microseconds>(planning_end - planning_start);
+  //     ROS_INFO("Time cost of whole PRM path planning: %f ms", planning.count()/1000.0);
+
+  //     // convert the point coordinate to pose
+  //     ros::Time plan_time = ros::Time::now();
+  //     for (int i = 1; i < path.size() -1; i++)
+  //     {
+  //       geometry_msgs::PoseStamped pose;
+  //       pose.header.stamp = plan_time;
+  //       pose.header.frame_id = frame_id_;
+  //       pose.pose.position.x = path[i].first;
+  //       pose.pose.position.y = path[i].second;
+  //       pose.pose.position.z = 0.0;
+  //       pose.pose.orientation.x = 0.0;
+  //       pose.pose.orientation.y = 0.0;
+  //       pose.pose.orientation.z = 0.0;
+  //       pose.pose.orientation.w = 1.0;
+  //       plan.push_back(pose);
+  //     }
+  //     plan.push_back(goal);
+  //     publishPlan(plan);
+  //     return true;
+  //   }
+  //   else
+  //   {
+  //     ROS_WARN("Failed to find a path! There is no path elements!");
+  //     return false;
+  //   }
   }
 
 
@@ -261,8 +355,8 @@ namespace PRM_planner
   {
     unsigned int mx, my;
     this->costmap_->worldToMap(wx, wy, mx, my);
-    unsigned int cell_cost = static_cast<unsigned int>(this->costmap_->getCost(mx, my));
-    if (cell_cost > 0 && cell_cost != -1)
+    int cell_cost = static_cast<int>(this->costmap_->getCost(mx, my));
+    if (cell_cost > 0 || cell_cost == -1)
     {
       return true;
     }

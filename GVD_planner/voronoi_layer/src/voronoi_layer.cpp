@@ -80,8 +80,18 @@ void VoronoiLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i,
         new_free_cells.push_back(IntPoint(i, j));
 
       if (!voronoi_.isOccupied(i, j) &&
-          master_grid.getCost(i, j) == costmap_2d::LETHAL_OBSTACLE)
+          (master_grid.getCost(i, j) == costmap_2d::LETHAL_OBSTACLE || static_cast<int>(master_grid.getCost(i, j)) == -1 || static_cast<int>(master_grid.getCost(i, j)) == 255))
         new_occupied_cells.push_back(IntPoint(i, j));
+
+      // if(static_cast<int>(master_grid.getCost(i, j)) == -1)
+      // {
+      //   ROS_INFO_STREAM("-1");
+      // }
+
+      // if(static_cast<int>(master_grid.getCost(i, j)) == 255)
+      // {
+      //   ROS_INFO_STREAM("255");
+      // }
     }
   }
 

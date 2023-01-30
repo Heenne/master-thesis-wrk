@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(splined_relaxed_a_star)
 
+set(LIB_MAJOR_VERSION "1")
+set(LIB_MINOR_VERSION "1")
+set(LIB_PATCH_VERSION "0")
+set(LIB_VERSION_STRING "${LIB_MAJOR_VERSION}.${LIB_MINOR_VERSION}.${LIB_PATCH_VERSION}")
+
 # # Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
 

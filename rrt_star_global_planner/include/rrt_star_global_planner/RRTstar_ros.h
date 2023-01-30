@@ -28,6 +28,13 @@
 
 #include <visualization_msgs/MarkerArray.h>
 
+#include <std_msgs/Float64MultiArray.h>
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include <splined_voronoi/path_smoothing.h>
+#include <splined_voronoi/path_planning.h>
+
 using std::string;
 
 
