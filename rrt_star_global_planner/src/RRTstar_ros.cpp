@@ -313,14 +313,27 @@ namespace RRTstar_planner
           std::vector<Eigen::Vector2f> points_of_plan;
 
           // How much length is left to get out of the new spline (target_spline_length - old_spline_approx_length)
-
+          int counter = 0;
           for (std::shared_ptr<bezier_splines::QuinticBezierSplines> &spline : spline_list)
           {
+            Eigen::Vector2f old_point = spline->calcPointOnBezierSpline(0.0);
+
             for (double i = 0.0; i <= 1.0; i = i + 0.01)
             {
               Eigen::Vector2f point_on_spline = spline->calcPointOnBezierSpline(i);
+                Eigen::Vector2f diff = point_on_spline - old_point;
+                if(sqrt(pow(diff(0),2)+pow(diff(1),2)) > 1.0)
+                {
+                    ROS_ERROR_STREAM("Error at spline no: " << counter);
+                    continue;
+                }
+
               points_of_plan.push_back(spline->calcPointOnBezierSpline(i));
+
+              old_point = point_on_spline;
             }
+
+            counter++;
           }
           // Add the target point to the spline as it will most likely not be added
           // points_of_plan.push_back(spline_list.back()->calcPointOnBezierSpline(1.0));
