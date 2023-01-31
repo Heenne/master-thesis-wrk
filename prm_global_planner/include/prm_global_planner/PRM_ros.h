@@ -38,6 +38,9 @@
 #include <splined_voronoi/path_smoothing.h>
 #include <splined_voronoi/path_planning.h>
 
+#include <fp_utils/bezier_splines/quintic_bezier_spline.h>
+#include <fp_utils/visualization_helper/visualization_helper.h>
+
 using std::string;
 
 

@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   visualization_msgs
   splined_voronoi
+  fp_utils
 )
 
 # # System dependencies are found with CMake's conventions
@@ -26,7 +27,7 @@ find_package(NLopt)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS nav_core roscpp rospy std_msgs splined_voronoi
+  CATKIN_DEPENDS nav_core roscpp rospy std_msgs splined_voronoi fp_utils
 )
 
 

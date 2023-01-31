@@ -188,100 +188,261 @@ namespace PRM_planner
 
     if(path.size() > 1)
     {
-
-      // build spline from waypoints and optimize to fulfil curvature limit
-      int costmap_size_x = this->costmap_->getSizeInCellsX();
-      int costmap_size_y = this->costmap_->getSizeInCellsY();
-      cv::Mat costmap_img_orig = cv::Mat::zeros(costmap_size_x, costmap_size_y, CV_8UC1);
-      int obstacle_count = 0;
-      for (int i = 0; i < costmap_size_x; i++)
-      {
-          for (int j = 0; j < costmap_size_y; j++)
+          // Final Path
+        std::vector<geometry_msgs::PoseStamped> selected_poses;
+        for (auto temp: path)
+        {
+          geometry_msgs::PoseStamped pose = geometry_msgs::PoseStamped();
+          pose.pose.position.x = temp.first;
+          pose.pose.position.y = temp.second;
+          pose.pose.position.z = 0;
+          selected_poses.push_back(pose);
+        }
+// Create splines
+          std::vector<std::shared_ptr<bezier_splines::QuinticBezierSplines>> spline_list;
+          for (int pose_counter = 0; pose_counter < (selected_poses.size() - 1); pose_counter++)
           {
-              double cell_cost = static_cast<double>(this->costmap_->getCost(i, j));
-              if (cell_cost > 0 || cell_cost == -1)
+            Eigen::Matrix<float, 2, 1> start_pose;
+            Eigen::Matrix<float, 2, 1> end_pose;
+
+            int next_pose_counter = 0;
+
+            start_pose << selected_poses[pose_counter].pose.position.x, selected_poses[pose_counter].pose.position.y;
+            end_pose << selected_poses[pose_counter + next_pose_counter].pose.position.x, selected_poses[pose_counter + next_pose_counter].pose.position.y;
+
+            while(sqrt(pow(abs(start_pose(0) - end_pose(0)),2) + pow(abs(start_pose(1) - end_pose(1)),2)) < 1.0)
+            {
+              if (pose_counter +next_pose_counter < (selected_poses.size() - 1))
               {
-                  costmap_img_orig.at<uchar>(i, j, 0) = 255;
-                  obstacle_count++;
+                next_pose_counter++;
+                start_pose << selected_poses[pose_counter].pose.position.x, selected_poses[pose_counter].pose.position.y;
+                end_pose << selected_poses[pose_counter + next_pose_counter].pose.position.x, selected_poses[pose_counter + next_pose_counter].pose.position.y;
               }
+              else
+              {
+                break;
+              }
+              
+            }
+
+            std::shared_ptr<bezier_splines::QuinticBezierSplines> spline =
+                std::make_shared<bezier_splines::QuinticBezierSplines>(start_pose, end_pose);
+
+            if (spline_list.size() > 0)
+            {
+              spline_list.back()->setNextSpline(spline);
+              spline->setPreviousSpline(spline_list.back());
+            }
+            spline_list.push_back(spline);
           }
-      }
-      
-      // get costmap as image
-      cv::Mat costmap_img;
-      cv::threshold(~costmap_img_orig, costmap_img, 1 / 0.05 / 10.0, 255, cv::THRESH_BINARY_INV);
-      costmap_img.convertTo(costmap_img, CV_8UC1);
 
-      cv::Mat obstacle_img = costmap_img;
+          // Set start tangent of first spline
+          tf::Quaternion start_quaternion;
+          tf::quaternionMsgToTF(start.pose.orientation, start_quaternion);
+          spline_list.front()->setStartTangentByQuaternion(start_quaternion);
+          // Set end tangent of last spline
+          tf::Quaternion end_quaternion;
+          tf::quaternionMsgToTF(goal.pose.orientation, end_quaternion);
+          spline_list.back()->setEndTangentByQuaternion(end_quaternion);
+          spline_list.back()->setEndTangentMagnitude(spline_list.back()->getEndTangentMagnitude() * 2.0);
 
-      std::vector<cv::Point2d> sparse_path_world;
-      for(auto point: path)
-      {
-        cv::Point2d new_point;
-        new_point.x = point.first;
-        new_point.y = point.second;
-        sparse_path_world.push_back(new_point);
-      }
+          // Visualization
+          // for (std::shared_ptr<bezier_splines::QuinticBezierSplines> &spline : spline_list)
+          // {
+            // 	spline->calcControlPoints();
+            // spline->addStartEndPointToVisuHelper();
+            //     spline->addTangentsToVisuHelper();
+            //     spline->addControlPointsToVisuHelper();
+            //     spline->addBezierSplineToVisuHelper(this->ras_params_->planning_points_per_spline);
+          //   spline->visualizeData();
+          // }
 
-      std::vector<cv::Point2d> continuous_path;
-      std::vector<cv::Point2d> optimized_sparse_path;
-      std::vector<double> optimized_lengths;
-      costmap_2d::Costmap2D costmap_copy = *(this->costmap_);
-      bool splining_success = path_smoothing::buildOptimizedContinuousPath(sparse_path_world,
-                                                                          continuous_path,
-                                                                          optimized_sparse_path,
-                                                                          optimized_lengths,
-                                                                          costmap_copy,
-                                                                          obstacle_img,
-                                                                          100.0,
-                                                                          50,
-                                                                          true,
-                                                                          5.0);
-      ROS_INFO_STREAM("Optimization Status: " << splining_success);
-      // ROS_INFO_STREAM(continuous_path.size());
-      // std_msgs::Float64MultiArray optimized_lengths_msg;
-      // optimized_lengths_msg.data = optimized_lengths;
-      // optimized_lengths_pub_.publish(optimized_lengths_msg);
+          // Optimize the curvature of the splines to be under a certain threshold
+          // ROS_INFO_STREAM("Optimizing the curvature of the splines");
+          //       ROS_INFO_STREAM("Curve Radius: " << this->ras_params_->max_robot_to_formation_centre_dist);
+          for (int spline_counter = 0; spline_counter < spline_list.size(); spline_counter++)
+          {
+            // ROS_INFO_STREAM("spline counter: " << spline_counter);
+            // ROS_INFO_STREAM("valid: " << spline_list[spline_counter]->checkMinCurveRadiusOnSpline(this->ras_params_->planning_points_per_spline, this->ras_params_->minimal_curve_radius, int i));
 
-      // // create plan from optimized sparse path for visualization
-      // // std::vector<geometry_msgs::PoseStamped> optimized_sparse_plan;
-      // // path_planning::createPlanFromPath(optimized_sparse_path, optimized_sparse_plan, this->frame_id_);
-      // // this->optimized_sparse_path_ = optimized_sparse_plan;
-      // // this->spline_tangent_lengths_ = optimized_lengths;
-      // // this->publishPlan(optimized_sparse_plan, this->optimized_plan_pub_);
+            int timeout_counter = 0;
 
-      if (!splining_success)
-      {
-          return false;
-      }
+            int point_of_failure = 0;
+            while (!spline_list[spline_counter]->checkMinCurveRadiusOnSpline(50,
+                                                                             0.5, // radius
+                                                                             point_of_failure))
+            {
+              // This process could be turned into an iterative optimization process, that tries to get to the limit of the minimal curve radius to minimize the distance the robots have to travel
+              if (point_of_failure < (50.0 / 2.0))
+              {
+                float current_start_magnitude = spline_list[spline_counter]->getStartTangentMagnitude();
+                // ROS_INFO_STREAM("Current_start_magnitude: " << current_start_magnitude);
+                spline_list[spline_counter]->setStartTangentMagnitude(1.05 * current_start_magnitude); // 1.5 ist just a value that I picked for the moment.
+              }
+              else
+              {
+                float current_end_magnitude = spline_list[spline_counter]->getEndTangentMagnitude();
+                // ROS_INFO_STREAM("Current_end_magnitude: " << current_end_magnitude);
+                spline_list[spline_counter]->setEndTangentMagnitude(1.05 * current_end_magnitude); // 1.5 ist just a value that I picked for the moment.
+              }
 
-      std::vector<geometry_msgs::PoseStamped> splined_plan;
-      path_planning::createPlanFromPath(continuous_path, splined_plan, this->frame_id_);
-      // // std::chrono::steady_clock::time_point splining_time = std::chrono::steady_clock::now();
-      // // double splining_duration = (std::chrono::duration_cast<std::chrono::milliseconds>(splining_time - plan_creating_time).count()) / 1000.0;
-      // // ROS_INFO_STREAM("SplinedVoronoiPlanner: Time taken for building splined plan (s): " << splining_duration);
+              spline_list[spline_counter]->calcControlPoints();
 
-      // if (!path_planning::isPlanFree(std::shared_ptr<costmap_2d::Costmap2D>(this->costmap_), 1, splined_plan))
+              // Loop was not able to optimize the spline after x iterations. Maybe make parameter for this?
+              if (timeout_counter >= 20)
+              {
+                ROS_ERROR_STREAM("SplinedRelaxedAStar: Timeout while optimizing spline, number: " << spline_counter);
+                break;
+              }
+              timeout_counter++;
+            }
+
+            // ROS_INFO_STREAM("spline counter: " << spline_counter);
+            // ROS_INFO_STREAM("valid: " << spline_list[spline_counter]->checkMinCurveRadiusOnSpline(this->planning_points_per_spline_, this->minimal_curve_radius_));
+          }
+
+          ROS_INFO_STREAM("Finished optimizing splines");
+
+          // Create list of points as plan
+          plan.clear();
+          std::vector<Eigen::Vector2f> points_of_plan;
+
+          // How much length is left to get out of the new spline (target_spline_length - old_spline_approx_length)
+
+          for (std::shared_ptr<bezier_splines::QuinticBezierSplines> &spline : spline_list)
+          {
+            for (double i = 0.0; i <= 1.0; i = i + 0.01)
+            {
+              Eigen::Vector2f point_on_spline = spline->calcPointOnBezierSpline(i);
+              points_of_plan.push_back(spline->calcPointOnBezierSpline(i));
+            }
+          }
+          // Add the target point to the spline as it will most likely not be added
+          // points_of_plan.push_back(spline_list.back()->calcPointOnBezierSpline(1.0));
+
+          geometry_msgs::PoseStamped last_pose;
+          // < is necessary because we just copy elements from one vector (0 until size()) to the other
+          for (uint path_counter = 0; path_counter < points_of_plan.size(); path_counter++)
+          {
+            geometry_msgs::PoseStamped pose;
+            pose.header.stamp = ros::Time::now();
+            pose.header.frame_id = this->frame_id_;
+
+            pose.pose.position.x = points_of_plan[path_counter][0];
+            pose.pose.position.y = points_of_plan[path_counter][1];
+
+            // Calculate orientation for each point of the plan with the current position and the last one
+            if (path_counter == 0) // No previous point so orientation of start will be taken
+            {
+              pose.pose.orientation = start.pose.orientation;
+            }
+            else // Some other points are before, so orientation can be calculated
+            {
+              float delta_x = pose.pose.position.x - last_pose.pose.position.x;
+              float delta_y = pose.pose.position.y - last_pose.pose.position.y;
+              double yaw_angle = std::atan2(delta_y, delta_x);
+              pose.pose.orientation = tf::createQuaternionMsgFromYaw(yaw_angle);
+            }
+
+            last_pose = pose; // Safe pose for next iteration
+            plan.insert(plan.begin() + plan.size(), pose);
+          }
+
+
+
+      // // build spline from waypoints and optimize to fulfil curvature limit
+      // int costmap_size_x = this->costmap_->getSizeInCellsX();
+      // int costmap_size_y = this->costmap_->getSizeInCellsY();
+      // cv::Mat costmap_img_orig = cv::Mat::zeros(costmap_size_x, costmap_size_y, CV_8UC1);
+      // int obstacle_count = 0;
+      // for (int i = 0; i < costmap_size_x; i++)
       // {
-      //     ROS_ERROR("Plan is not free!");
+      //     for (int j = 0; j < costmap_size_y; j++)
+      //     {
+      //         double cell_cost = static_cast<double>(this->costmap_->getCost(i, j));
+      //         if (cell_cost > 0 || cell_cost == -1)
+      //         {
+      //             costmap_img_orig.at<uchar>(i, j, 0) = 255;
+      //             obstacle_count++;
+      //         }
+      //     }
+      // }
+      
+      // // get costmap as image
+      // cv::Mat costmap_img;
+      // cv::threshold(~costmap_img_orig, costmap_img, 1 / 0.05 / 10.0, 255, cv::THRESH_BINARY_INV);
+      // costmap_img.convertTo(costmap_img, CV_8UC1);
+
+      // cv::Mat obstacle_img = costmap_img;
+
+      // std::vector<cv::Point2d> sparse_path_world;
+      // for(auto point: path)
+      // {
+      //   cv::Point2d new_point;
+      //   new_point.x = point.first;
+      //   new_point.y = point.second;
+      //   sparse_path_world.push_back(new_point);
+      // }
+
+      // std::vector<cv::Point2d> continuous_path;
+      // std::vector<cv::Point2d> optimized_sparse_path;
+      // std::vector<double> optimized_lengths;
+      // costmap_2d::Costmap2D costmap_copy = *(this->costmap_);
+      // bool splining_success = path_smoothing::buildOptimizedContinuousPath(sparse_path_world,
+      //                                                                     continuous_path,
+      //                                                                     optimized_sparse_path,
+      //                                                                     optimized_lengths,
+      //                                                                     costmap_copy,
+      //                                                                     obstacle_img,
+      //                                                                     100.0,
+      //                                                                     50,
+      //                                                                     true,
+      //                                                                     5.0);
+      // ROS_INFO_STREAM("Optimization Status: " << splining_success);
+      // // ROS_INFO_STREAM(continuous_path.size());
+      // // std_msgs::Float64MultiArray optimized_lengths_msg;
+      // // optimized_lengths_msg.data = optimized_lengths;
+      // // optimized_lengths_pub_.publish(optimized_lengths_msg);
+
+      // // // create plan from optimized sparse path for visualization
+      // // // std::vector<geometry_msgs::PoseStamped> optimized_sparse_plan;
+      // // // path_planning::createPlanFromPath(optimized_sparse_path, optimized_sparse_plan, this->frame_id_);
+      // // // this->optimized_sparse_path_ = optimized_sparse_plan;
+      // // // this->spline_tangent_lengths_ = optimized_lengths;
+      // // // this->publishPlan(optimized_sparse_plan, this->optimized_plan_pub_);
+
+      // if (!splining_success)
+      // {
       //     return false;
       // }
-      // // std::chrono::steady_clock::time_point free_check_time = std::chrono::steady_clock::now();
-      // // ROS_INFO_STREAM(
-      // //     "SplinedVoronoiPlanner: Time taken for checking if final plan is free (s): "
-      // //     << (std::chrono::duration_cast<std::chrono::microseconds>(free_check_time - splining_time).count()) /
-      // //            1000000.0);
+
+      // std::vector<geometry_msgs::PoseStamped> splined_plan;
+      // path_planning::createPlanFromPath(continuous_path, splined_plan, this->frame_id_);
+      // // // std::chrono::steady_clock::time_point splining_time = std::chrono::steady_clock::now();
+      // // // double splining_duration = (std::chrono::duration_cast<std::chrono::milliseconds>(splining_time - plan_creating_time).count()) / 1000.0;
+      // // // ROS_INFO_STREAM("SplinedVoronoiPlanner: Time taken for building splined plan (s): " << splining_duration);
+
+      // // if (!path_planning::isPlanFree(std::shared_ptr<costmap_2d::Costmap2D>(this->costmap_), 1, splined_plan))
+      // // {
+      // //     ROS_ERROR("Plan is not free!");
+      // //     return false;
+      // // }
+      // // // std::chrono::steady_clock::time_point free_check_time = std::chrono::steady_clock::now();
+      // // // ROS_INFO_STREAM(
+      // // //     "SplinedVoronoiPlanner: Time taken for checking if final plan is free (s): "
+      // // //     << (std::chrono::duration_cast<std::chrono::microseconds>(free_check_time - splining_time).count()) /
+      // // //            1000000.0);
       
-      // // fill resulting plan
-      for (auto pose : splined_plan)
-      {
-        plan.push_back(pose);
-      }
-      if (plan.empty())
-      {
-          ROS_ERROR("Got empty plan from spline interpolation");
-          return false;
-      }
+      // // // fill resulting plan
+      // for (auto pose : splined_plan)
+      // {
+      //   plan.push_back(pose);
+      // }
+      // if (plan.empty())
+      // {
+      //     ROS_ERROR("Got empty plan from spline interpolation");
+      //     return false;
+      // }
     }
 
     publishPlan(plan);

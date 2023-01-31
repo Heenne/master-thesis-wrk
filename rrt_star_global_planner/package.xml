@@ -34,6 +34,9 @@
   <depend>visualization_msgs</depend>
 
   <depend>splined_voronoi</depend>
+  <depend>fp_utils</depend>
+  <depend>tf</depend>
+
 
 
   <!-- The export tag contains other, unspecified, tags -->

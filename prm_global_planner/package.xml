@@ -32,6 +32,8 @@
   <exec_depend>std_msgs</exec_depend>
 
   <depend>splined_voronoi</depend>
+  <depend>fp_utils</depend>
+  <depend>tf</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
