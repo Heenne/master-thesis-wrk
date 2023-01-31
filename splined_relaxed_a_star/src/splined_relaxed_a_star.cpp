@@ -454,6 +454,7 @@ uint32_t SplinedRelaxedAStar::makePlan(const geometry_msgs::PoseStamped& start, 
                 {
                     ROS_ERROR_STREAM(
                         "SplinedRelaxedAStar: Timeout while optimizing spline, number: " << spline_counter);
+                    // ROS_ERROR_STREAM("magnitude: " << spline_list[spline_counter]->getEndTangentMagnitude());
                     break;
                 }
                 timeout_counter++;
@@ -483,6 +484,7 @@ uint32_t SplinedRelaxedAStar::makePlan(const geometry_msgs::PoseStamped& start, 
 
         // How much length is left to get out of the new spline (target_spline_length - old_spline_approx_length)
         float remaining_spline_length = 0.0;
+        int counter = 0;
 
         for (std::shared_ptr<bezier_splines::QuinticBezierSplines>& spline : spline_list)
         {
@@ -490,35 +492,53 @@ uint32_t SplinedRelaxedAStar::makePlan(const geometry_msgs::PoseStamped& start, 
             float last_iterator = 0.0;
             bool spline_not_ended = true;
 
-            do
+            // do
+            // {
+            //     float lower_bound = iterator;
+            //     if (remaining_spline_length <= 0.0)
+            //     {
+            //         spline_not_ended = spline->calcIteratorBySplineLength(
+            //             iterator, this->ras_params_->target_spline_length, this->ras_params_->max_diff_to_target_length,
+            //             (lower_bound - last_iterator), this->ras_params_->max_iterator_step_size,
+            //             remaining_spline_length);
+            //     }
+            //     else
+            //     {
+            //         spline_not_ended = spline->calcIteratorBySplineLength(
+            //             iterator, remaining_spline_length, this->ras_params_->max_diff_to_target_length,
+            //             (lower_bound - last_iterator), this->ras_params_->max_iterator_step_size,
+            //             remaining_spline_length);
+            //     }
+
+            //     if (spline_not_ended)
+            //     {
+            //         Eigen::Vector2f point_on_spline = spline->calcPointOnBezierSpline(iterator);
+            //         points_of_plan.push_back(spline->calcPointOnBezierSpline(iterator));
+            //     }
+
+            //     last_iterator = lower_bound;
+            // } while (spline_not_ended);
+
+            Eigen::Vector2f old_point = spline->calcPointOnBezierSpline(0.0);
+
+            for (double i = 0.0; i <= 1.0; i = i + 0.01)
             {
-                float lower_bound = iterator;
-                if (remaining_spline_length <= 0.0)
+              Eigen::Vector2f point_on_spline = spline->calcPointOnBezierSpline(i);
+                Eigen::Vector2f diff = point_on_spline - old_point;
+                if(sqrt(pow(diff(0),2)+pow(diff(1),2)) > 1.0)
                 {
-                    spline_not_ended = spline->calcIteratorBySplineLength(
-                        iterator, this->ras_params_->target_spline_length, this->ras_params_->max_diff_to_target_length,
-                        (lower_bound - last_iterator), this->ras_params_->max_iterator_step_size,
-                        remaining_spline_length);
-                }
-                else
-                {
-                    spline_not_ended = spline->calcIteratorBySplineLength(
-                        iterator, remaining_spline_length, this->ras_params_->max_diff_to_target_length,
-                        (lower_bound - last_iterator), this->ras_params_->max_iterator_step_size,
-                        remaining_spline_length);
+                    ROS_ERROR_STREAM("Error at spline no: " << counter);
+                    continue;
                 }
 
-                if (spline_not_ended)
-                {
-                    Eigen::Vector2f point_on_spline = spline->calcPointOnBezierSpline(iterator);
-                    points_of_plan.push_back(spline->calcPointOnBezierSpline(iterator));
-                }
+              points_of_plan.push_back(spline->calcPointOnBezierSpline(i));
 
-                last_iterator = lower_bound;
-            } while (spline_not_ended);
+              old_point = point_on_spline;
+            }
+            counter++;
         }
         // Add the target point to the spline as it will most likely not be added
-        points_of_plan.push_back(spline_list.back()->calcPointOnBezierSpline(1.0));
+        // points_of_plan.push_back(spline_list.back()->calcPointOnBezierSpline(1.0));
         auto optimize_end = std::chrono::high_resolution_clock::now();
         std::cout << "Optimization took "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(optimize_end - optimize_start).count()
